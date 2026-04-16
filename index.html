@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تطبيق الشاب - إدارة الزبائن</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-wallet"></i></div>
+        <div>
+          <h1>نظام الزبائن</h1>
+          <p>ديون + رسومات واردة</p>
+        </div>
+      </div>
+
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="dashboard"><i class="fa-solid fa-house"></i><span>الرئيسية</span></button>
+        <button class="tab-btn" data-tab="customers"><i class="fa-solid fa-users"></i><span>الزبائن</span></button>
+        <button class="tab-btn" data-tab="drawings"><i class="fa-solid fa-pen-to-square"></i><span>الرسومات الواردة</span></button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section class="tab-panel active" id="dashboard">
+        <header class="section-head">
+          <div>
+            <h2>الرئيسية</h2>
+            <p>ملخص سريع عن النظام</p>
+          </div>
+        </header>
+
+        <div class="stats-grid">
+          <article class="stat-card">
+            <i class="fa-solid fa-users"></i>
+            <strong id="customersCount">0</strong>
+            <span>عدد الزبائن</span>
+          </article>
+          <article class="stat-card">
+            <i class="fa-solid fa-money-bill-wave"></i>
+            <strong id="totalBalance">0 د.ع</strong>
+            <span>إجمالي الباقي</span>
+          </article>
+          <article class="stat-card">
+            <i class="fa-solid fa-image"></i>
+            <strong id="newDrawingsCount">0</strong>
+            <span>رسومات جديدة</span>
+          </article>
+          <article class="stat-card">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+            <strong id="transactionsCount">0</strong>
+            <span>عدد المعاملات</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="customers">
+        <header class="section-head section-head-wrap">
+          <div>
+            <h2>الزبائن</h2>
+            <p>أضف الزبائن وادِر الديون والتسديدات</p>
+          </div>
+          <div class="head-actions">
+            <input type="search" id="customerSearch" class="input" placeholder="بحث باسم الزبون أو الرقم" />
+            <button id="addCustomerBtn" class="btn primary"><i class="fa-solid fa-user-plus"></i> إضافة زبون</button>
+          </div>
+        </header>
+
+        <div id="customerList" class="list-grid"></div>
+      </section>
+
+      <section class="tab-panel" id="drawings">
+        <header class="section-head">
+          <div>
+            <h2>الرسومات الواردة</h2>
+            <p>كل الرسومات التي وصلت من تطبيق الأب</p>
+          </div>
+        </header>
+
+        <div id="drawingsList" class="drawings-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="customerModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="customerModalTitle">إضافة زبون</h3>
+        <button class="icon-btn" data-close="customerModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="customerId" />
+        <label>اسم الزبون</label>
+        <input id="customerName" class="input" placeholder="اكتب اسم الزبون" />
+        <label>رقم الهاتف</label>
+        <input id="customerPhone" class="input" placeholder="اكتب الرقم" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-close="customerModal">إلغاء</button>
+        <button class="btn primary" id="saveCustomerBtn">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="customerDetailsModal">
+    <div class="modal-card large">
+      <div class="modal-head">
+        <h3 id="detailsCustomerName">تفاصيل الزبون</h3>
+        <button class="icon-btn" data-close="customerDetailsModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body customer-details-wrap">
+        <div class="customer-summary">
+          <div class="summary-box"><span>الرقم</span><strong id="detailsCustomerPhone">-</strong></div>
+          <div class="summary-box"><span>المتبقي</span><strong id="detailsCustomerBalance">0 د.ع</strong></div>
+        </div>
+        <div class="inline-actions">
+          <button id="newDebtBtn" class="btn primary"><i class="fa-solid fa-plus"></i> دين جديد</button>
+          <button id="newPaymentBtn" class="btn success"><i class="fa-solid fa-hand-holding-dollar"></i> تسديد</button>
+        </div>
+        <div id="transactionsList" class="transactions-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="transactionModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="transactionModalTitle">عملية جديدة</h3>
+        <button class="icon-btn" data-close="transactionModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="transactionType" />
+        <label>المبلغ بالدينار العراقي</label>
+        <input id="transactionAmount" class="input" type="number" min="0" placeholder="اكتب المبلغ" />
+        <label>التاريخ</label>
+        <input id="transactionDate" class="input" />
+        <label>ملاحظة</label>
+        <input id="transactionNote" class="input" placeholder="ملاحظة اختيارية" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-close="transactionModal">إلغاء</button>
+        <button class="btn primary" id="saveTransactionBtn">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+</body>
+</html>
