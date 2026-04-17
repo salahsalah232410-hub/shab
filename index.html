@@ -162,6 +162,20 @@
       </div>
     </div>
   </div>
+  
+  <div class="modal" id="voiceTextModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>معاينة وصف التسجيل الصوتي</h3>
+        <button class="icon-btn" data-close="voiceTextModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="voiceTextContent" style="line-height: 1.8; font-size: 18px; color: var(--text); padding: 10px; background: var(--card-2); border-radius: 12px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audioPlayer" style="display: none;"></audio>
 
   <div class="toast" id="toast"></div>
   <script type="module" src="script.js"></script>
