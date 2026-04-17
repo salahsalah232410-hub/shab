@@ -1,5 +1,17 @@
-const CUSTOMERS_KEY = 'familyDebtCustomers';
-const DRAWINGS_KEY = 'familyDebtIncomingDrawings';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB4Fj5TT82r-8qTLThEzZOEPynpYqDvlog",
+  authDomain: "ggkf-7212f.firebaseapp.com",
+  projectId: "ggkf-7212f",
+  storageBucket: "ggkf-7212f.firebasestorage.app",
+  messagingSenderId: "1066581984320",
+  appId: "1:1066581984320:web:2f93338048d15291660ba5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 const state = {
   selectedCustomerId: null,
@@ -9,12 +21,21 @@ const state = {
 const qs = (s) => document.querySelector(s);
 const qsa = (s) => Array.from(document.querySelectorAll(s));
 
-function readJson(key) {
-  return JSON.parse(localStorage.getItem(key) || '[]');
-}
-function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
+let customersData = [];
+let drawingsData = [];
+
+// استماع تلقائي للزبائن
+onSnapshot(query(collection(db, "customers"), orderBy("createdAt", "desc")), (snapshot) => {
+  customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  refreshAll();
+});
+
+// استماع تلقائي للرسومات
+onSnapshot(query(collection(db, "drawings"), orderBy("createdAt", "desc")), (snapshot) => {
+  drawingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  refreshAll();
+});
+
 function formatCurrency(value) {
   return `${Number(value || 0).toLocaleString('ar-IQ')} د.ع`;
 }
@@ -31,27 +52,12 @@ function showToast(message) {
 function openModal(id) { qs(`#${id}`).classList.add('show'); }
 function closeModal(id) { qs(`#${id}`).classList.remove('show'); }
 
-function getCustomers() {
-  return readJson(CUSTOMERS_KEY);
-}
-function saveCustomers(customers) {
-  writeJson(CUSTOMERS_KEY, customers);
-}
-function getDrawings() {
-  return readJson(DRAWINGS_KEY);
-}
-function saveDrawings(drawings) {
-  writeJson(DRAWINGS_KEY, drawings);
-}
-
 function calculateStats() {
-  const customers = getCustomers();
-  const drawings = getDrawings();
-  const totalBalance = customers.reduce((sum, c) => sum + Number(c.balance || 0), 0);
-  const transactionsCount = customers.reduce((sum, c) => sum + (c.transactions?.length || 0), 0);
-  const newDrawings = drawings.filter(d => d.status === 'جديدة').length;
+  const totalBalance = customersData.reduce((sum, c) => sum + Number(c.balance || 0), 0);
+  const transactionsCount = customersData.reduce((sum, c) => sum + (c.transactions?.length || 0), 0);
+  const newDrawings = drawingsData.filter(d => d.status === 'جديدة').length;
 
-  qs('#customersCount').textContent = customers.length;
+  qs('#customersCount').textContent = customersData.length;
   qs('#totalBalance').textContent = formatCurrency(totalBalance);
   qs('#newDrawingsCount').textContent = newDrawings;
   qs('#transactionsCount').textContent = transactionsCount;
@@ -60,20 +66,18 @@ function calculateStats() {
 function renderCustomers() {
   const list = qs('#customerList');
   const search = qs('#customerSearch').value.trim();
-  let customers = getCustomers();
+  let filtered = customersData;
 
   if (search) {
-    customers = customers.filter(c =>
-      c.name.includes(search) || (c.phone || '').includes(search)
-    );
+    filtered = filtered.filter(c => c.name.includes(search) || (c.phone || '').includes(search));
   }
 
-  if (!customers.length) {
+  if (!filtered.length) {
     list.innerHTML = `<div class="empty-state">ماكو زبائن حالياً</div>`;
     return;
   }
 
-  list.innerHTML = customers.map(customer => `
+  list.innerHTML = filtered.map(customer => `
     <article class="customer-card">
       <h3>${escapeHtml(customer.name)}</h3>
       <div class="meta">${escapeHtml(customer.phone || 'بدون رقم')}</div>
@@ -90,35 +94,37 @@ function renderCustomers() {
 
 function renderDrawings() {
   const list = qs('#drawingsList');
-  const drawings = getDrawings();
 
-  if (!drawings.length) {
+  if (!drawingsData.length) {
     list.innerHTML = `<div class="empty-state">ماكو رسومات واردة حالياً</div>`;
     return;
   }
 
-  list.innerHTML = drawings.map(drawing => `
+  list.innerHTML = drawingsData.map(drawing => `
     <article class="drawing-card">
       <div class="transaction-head">
-        <h3>رسمة واردة</h3>
+        <h3 style="margin: 0;">${escapeHtml(drawing.recognizedText)}</h3>
         <span class="badge ${drawing.status === 'جديدة' ? 'new' : 'done'}">${drawing.status}</span>
       </div>
-      <div class="meta">${escapeHtml(drawing.dateLabel || '')} - ${escapeHtml(drawing.timeLabel || '')}</div>
-      <img src="${drawing.imageData}" alt="رسمة واردة" />
-      <label>تفسير الرسمة</label>
-      <textarea onchange="updateDrawingNote('${drawing.id}', this.value)" placeholder="اكتب تفسير الرسمة هنا">${escapeHtml(drawing.note || '')}</textarea>
+      <div class="meta" style="margin-top: 10px; margin-bottom: 14px; font-weight: bold;">تاريخ الإرسال: ${escapeHtml(drawing.dateLabel || '')} - ${escapeHtml(drawing.timeLabel || '')}</div>
       <div class="drawing-actions">
-        <button class="btn warning" onclick="toggleDrawingStatus('${drawing.id}')"><i class="fa-solid fa-check"></i> تمت المراجعة</button>
+        <button class="btn primary" onclick="previewImage('${escapeHtml(drawing.imageData)}')"><i class="fa-solid fa-eye"></i> معاينة الرسمة</button>
+        <button class="btn ${drawing.status === 'جديدة' ? 'warning' : 'success'}" onclick="toggleDrawingStatus('${drawing.id}')"><i class="fa-solid fa-check"></i> ${drawing.status === 'جديدة' ? 'تمت المراجعة' : 'إلغاء المراجعة'}</button>
         <button class="btn danger" onclick="deleteDrawing('${drawing.id}')"><i class="fa-solid fa-trash"></i> حذف</button>
       </div>
     </article>
   `).join('');
 }
 
+window.previewImage = function(imgData) {
+  qs('#previewImageSrc').src = imgData;
+  openModal('previewModal');
+}
+
 function openCustomerModal(editId = null) {
   qs('#customerId').value = editId || '';
   if (editId) {
-    const customer = getCustomers().find(c => c.id === editId);
+    const customer = customersData.find(c => c.id === editId);
     qs('#customerModalTitle').textContent = 'تعديل زبون';
     qs('#customerName').value = customer?.name || '';
     qs('#customerPhone').value = customer?.phone || '';
@@ -130,7 +136,7 @@ function openCustomerModal(editId = null) {
   openModal('customerModal');
 }
 
-function saveCustomer() {
+async function saveCustomer() {
   const id = qs('#customerId').value;
   const name = qs('#customerName').value.trim();
   const phone = qs('#customerPhone').value.trim();
@@ -140,45 +146,34 @@ function saveCustomer() {
     return;
   }
 
-  const customers = getCustomers();
   if (id) {
-    const idx = customers.findIndex(c => c.id === id);
-    if (idx > -1) {
-      customers[idx].name = name;
-      customers[idx].phone = phone;
-    }
+    await updateDoc(doc(db, "customers", id), { name, phone });
     showToast('تم تعديل الزبون');
   } else {
-    customers.unshift({
-      id: `customer_${Date.now()}`,
+    await addDoc(collection(db, "customers"), {
       name,
       phone,
       balance: 0,
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
       transactions: [],
     });
     showToast('تمت إضافة الزبون');
   }
-
-  saveCustomers(customers);
   closeModal('customerModal');
-  refreshAll();
 }
 
-function editCustomer(id) {
+window.editCustomer = function(id) {
   openCustomerModal(id);
 }
 
-function deleteCustomer(id) {
-  const customers = getCustomers().filter(c => c.id !== id);
-  saveCustomers(customers);
+window.deleteCustomer = async function(id) {
+  await deleteDoc(doc(db, "customers", id));
   if (state.selectedCustomerId === id) closeModal('customerDetailsModal');
   showToast('تم حذف الزبون');
-  refreshAll();
 }
 
-function openCustomerDetails(id) {
-  const customer = getCustomers().find(c => c.id === id);
+window.openCustomerDetails = function(id) {
+  const customer = customersData.find(c => c.id === id);
   if (!customer) return;
   state.selectedCustomerId = id;
   qs('#detailsCustomerName').textContent = customer.name;
@@ -216,68 +211,51 @@ function openTransactionModal(type) {
   openModal('transactionModal');
 }
 
-function saveTransaction() {
+async function saveTransaction() {
   const amount = Number(qs('#transactionAmount').value);
   const date = qs('#transactionDate').value.trim();
   const note = qs('#transactionNote').value.trim();
   const type = qs('#transactionType').value;
 
-  if (!state.selectedCustomerId) return;
-  if (!amount || amount <= 0) {
-    showToast('اكتب مبلغ صحيح');
-    return;
-  }
+  if (!state.selectedCustomerId || !amount || amount <= 0) return;
 
-  const customers = getCustomers();
-  const idx = customers.findIndex(c => c.id === state.selectedCustomerId);
-  if (idx === -1) return;
+  const customer = customersData.find(c => c.id === state.selectedCustomerId);
+  if (!customer) return;
 
-  let balance = Number(customers[idx].balance || 0);
+  let balance = Number(customer.balance || 0);
   balance = type === 'debt' ? balance + amount : balance - amount;
-  customers[idx].balance = balance;
-  customers[idx].transactions = customers[idx].transactions || [];
-  customers[idx].transactions.push({
+
+  const newTransaction = {
     id: `trx_${Date.now()}`,
-    customerId: state.selectedCustomerId,
     type,
     amount,
     date,
     note,
     balanceAfter: balance,
+  };
+
+  const updatedTransactions = customer.transactions ? [...customer.transactions, newTransaction] : [newTransaction];
+
+  await updateDoc(doc(db, "customers", state.selectedCustomerId), {
+    balance: balance,
+    transactions: updatedTransactions
   });
 
-  saveCustomers(customers);
   closeModal('transactionModal');
   openCustomerDetails(state.selectedCustomerId);
-  refreshAll();
   showToast(type === 'debt' ? 'تمت إضافة الدين' : 'تمت إضافة التسديدة');
 }
 
-function updateDrawingNote(id, note) {
-  const drawings = getDrawings();
-  const idx = drawings.findIndex(d => d.id === id);
-  if (idx === -1) return;
-  drawings[idx].note = note;
-  saveDrawings(drawings);
-  calculateStats();
-}
-
-function toggleDrawingStatus(id) {
-  const drawings = getDrawings();
-  const idx = drawings.findIndex(d => d.id === id);
-  if (idx === -1) return;
-  drawings[idx].status = drawings[idx].status === 'جديدة' ? 'تمت المراجعة' : 'جديدة';
-  saveDrawings(drawings);
-  renderDrawings();
-  calculateStats();
+window.toggleDrawingStatus = async function(id) {
+  const drawing = drawingsData.find(d => d.id === id);
+  if (!drawing) return;
+  const newStatus = drawing.status === 'جديدة' ? 'تمت المراجعة' : 'جديدة';
+  await updateDoc(doc(db, "drawings", id), { status: newStatus });
   showToast('تم تحديث الحالة');
 }
 
-function deleteDrawing(id) {
-  const drawings = getDrawings().filter(d => d.id !== id);
-  saveDrawings(drawings);
-  renderDrawings();
-  calculateStats();
+window.deleteDrawing = async function(id) {
+  await deleteDoc(doc(db, "drawings", id));
   showToast('تم حذف الرسمة');
 }
 
@@ -315,12 +293,3 @@ qs('#saveTransactionBtn').addEventListener('click', saveTransaction);
 qs('#newDebtBtn').addEventListener('click', () => openTransactionModal('debt'));
 qs('#newPaymentBtn').addEventListener('click', () => openTransactionModal('payment'));
 qs('#customerSearch').addEventListener('input', renderCustomers);
-window.addEventListener('storage', refreshAll);
-
-refreshAll();
-window.openCustomerDetails = openCustomerDetails;
-window.editCustomer = editCustomer;
-window.deleteCustomer = deleteCustomer;
-window.updateDrawingNote = updateDrawingNote;
-window.toggleDrawingStatus = toggleDrawingStatus;
-window.deleteDrawing = deleteDrawing;
