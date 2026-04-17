@@ -20,6 +20,7 @@ const state = {
 
 const qs = (s) => document.querySelector(s);
 const qsa = (s) => Array.from(document.querySelectorAll(s));
+const audioPlayer = qs('#audioPlayer');
 
 let customersData = [];
 let drawingsData = [];
@@ -103,14 +104,28 @@ function renderDrawings() {
   list.innerHTML = drawingsData.map(drawing => `
     <article class="drawing-card">
       <div class="transaction-head">
-        <h3 style="margin: 0;">${escapeHtml(drawing.recognizedText)}</h3>
+        <h3 style="margin: 0;">رسمة جديدة</h3>
         <span class="badge ${drawing.status === 'جديدة' ? 'new' : 'done'}">${drawing.status}</span>
       </div>
+      
+      <div class="drawing-data">
+        <div><strong>الاسم:</strong> ${escapeHtml(drawing.recognizedName || drawing.recognizedText || 'غير معروف')}</div>
+        <div><strong>الرقم:</strong> ${escapeHtml(drawing.recognizedNumber || 'غير معروف')}</div>
+      </div>
+
       <div class="meta" style="margin-top: 10px; margin-bottom: 14px; font-weight: bold;">تاريخ الإرسال: ${escapeHtml(drawing.dateLabel || '')} - ${escapeHtml(drawing.timeLabel || '')}</div>
+      
       <div class="drawing-actions">
-        <button class="btn primary" onclick="previewImage('${escapeHtml(drawing.imageData)}')"><i class="fa-solid fa-eye"></i> معاينة الرسمة</button>
+        <button class="btn primary" onclick="previewImage('${escapeHtml(drawing.imageData)}')"><i class="fa-solid fa-eye"></i> معاينة اللوحة</button>
         <button class="btn ${drawing.status === 'جديدة' ? 'warning' : 'success'}" onclick="toggleDrawingStatus('${drawing.id}')"><i class="fa-solid fa-check"></i> ${drawing.status === 'جديدة' ? 'تمت المراجعة' : 'إلغاء المراجعة'}</button>
         <button class="btn danger" onclick="deleteDrawing('${drawing.id}')"><i class="fa-solid fa-trash"></i> حذف</button>
+        
+        ${drawing.audioData ? `
+          <button class="btn info" onclick="playAudio('${drawing.audioData}')"><i class="fa-solid fa-volume-high"></i> استماع</button>
+        ` : ''}
+        ${drawing.audioText ? `
+          <button class="btn ghost" onclick="showVoiceText('${escapeHtml(drawing.audioText)}')"><i class="fa-solid fa-file-lines"></i> معاينة النص</button>
+        ` : ''}
       </div>
     </article>
   `).join('');
@@ -119,6 +134,17 @@ function renderDrawings() {
 window.previewImage = function(imgData) {
   qs('#previewImageSrc').src = imgData;
   openModal('previewModal');
+}
+
+window.playAudio = function(audioBase64) {
+  audioPlayer.src = audioBase64;
+  audioPlayer.play().catch(e => showToast('حدث خطأ في تشغيل الصوت'));
+  showToast('جاري تشغيل الصوت...');
+}
+
+window.showVoiceText = function(text) {
+  qs('#voiceTextContent').textContent = text;
+  openModal('voiceTextModal');
 }
 
 function openCustomerModal(editId = null) {
@@ -284,7 +310,12 @@ qsa('.tab-btn').forEach(btn => {
 });
 
 qsa('[data-close]').forEach(btn => {
-  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+  btn.addEventListener('click', () => {
+    closeModal(btn.dataset.close);
+    // إيقاف الصوت عند إغلاق النوافذ
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
+  });
 });
 
 qs('#addCustomerBtn').addEventListener('click', () => openCustomerModal());
