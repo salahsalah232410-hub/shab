@@ -133,6 +133,10 @@ body {
   padding: 16px;
 }
 .customer-card h3, .drawing-card h3 { margin: 0 0 8px; }
+
+.drawing-data { margin-bottom: 14px; }
+.drawing-data div { margin-bottom: 4px; font-size: 16px; }
+
 .meta, .mini-note { color: var(--muted); font-size: 14px; }
 .card-actions, .drawing-actions, .inline-actions {
   display: flex;
@@ -162,6 +166,7 @@ body {
 .btn.success { background: linear-gradient(145deg, #16a34a, #4ade80); }
 .btn.danger { background: linear-gradient(145deg, #dc2626, #f87171); }
 .btn.warning { background: linear-gradient(145deg, #d97706, #f59e0b); }
+.btn.info { background: linear-gradient(145deg, #0284c7, #38bdf8); }
 .btn.ghost { background: rgba(255,255,255,.08); color: var(--text); border: 1px solid var(--line); }
 
 .input, textarea {
