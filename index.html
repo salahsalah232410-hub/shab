@@ -80,7 +80,7 @@
         <header class="section-head">
           <div>
             <h2>الرسومات الواردة</h2>
-            <p>كل الرسومات التي وصلت من تطبيق الأب</p>
+            <p>كل العمليات التي وصلت من تطبيق الأب تلقائياً</p>
           </div>
         </header>
 
@@ -151,7 +151,19 @@
     </div>
   </div>
 
+  <div class="modal" id="previewModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>معاينة الرسمة</h3>
+        <button class="icon-btn" data-close="previewModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <img id="previewImageSrc" src="" alt="رسمة" style="width: 100%; border-radius: 18px; border: 1px solid var(--line);" />
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
